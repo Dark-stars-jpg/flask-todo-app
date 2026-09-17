@@ -13,6 +13,7 @@ class Todo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     complete = db.Column(db.Boolean, default=False)
+    priority = db.Column(db.String(20), default='medium')  # Интеграция поля приоритета (ПМ.02)
 
 @app.route("/")
 def index():
@@ -22,8 +23,9 @@ def index():
 @app.route("/add", methods=["POST"])
 def add():
     title = request.form.get("title")
+    priority = request.form.get("priority", "medium")  # Интеграция: получение приоритета из формы
     if title:
-        todo = Todo(title=title, complete=False)
+        todo = Todo(title=title, complete=False, priority=priority)  # Интеграция: сохранение приоритета
         db.session.add(todo)
         db.session.commit()
     return redirect(url_for("index"))
@@ -79,9 +81,12 @@ def api_get_todos():
               complete:
                 type: boolean
                 example: false
+              priority:
+                type: string
+                example: "medium"
     """
     todos = Todo.query.all()
-    return jsonify([{"id": t.id, "title": t.title, "complete": t.complete} for t in todos])
+    return jsonify([{"id": t.id, "title": t.title, "complete": t.complete, "priority": t.priority} for t in todos])
 
 @app.route("/api/todos/<int:todo_id>", methods=["GET"])
 def api_get_todo(todo_id):
@@ -109,11 +114,14 @@ def api_get_todo(todo_id):
             complete:
               type: boolean
               example: false
+            priority:
+              type: string
+              example: "medium"
       404:
         description: Todo not found
     """
     todo = Todo.query.get_or_404(todo_id)
-    return jsonify({"id": todo.id, "title": todo.title, "complete": todo.complete})
+    return jsonify({"id": todo.id, "title": todo.title, "complete": todo.complete, "priority": todo.priority})
 
 @app.route("/api/todos", methods=["POST"])
 def api_create_todo():
@@ -129,6 +137,9 @@ def api_create_todo():
             title:
               type: string
               example: "New task"
+            priority:
+              type: string
+              example: "high"
     responses:
       201:
         description: Todo created successfully
@@ -143,6 +154,9 @@ def api_create_todo():
             complete:
               type: boolean
               example: false
+            priority:
+              type: string
+              example: "high"
       400:
         description: Invalid input
     """
@@ -150,12 +164,13 @@ def api_create_todo():
         return jsonify({"error": "Missing JSON"}), 400
     data = request.get_json()
     title = data.get("title")
+    priority = data.get("priority", "medium")  # Интеграция: получение приоритета из JSON
     if not title:
         return jsonify({"error": "Title is required"}), 400
-    todo = Todo(title=title, complete=False)
+    todo = Todo(title=title, complete=False, priority=priority)  # Интеграция: сохранение приоритета
     db.session.add(todo)
     db.session.commit()
-    return jsonify({"id": todo.id, "title": todo.title, "complete": todo.complete}), 201
+    return jsonify({"id": todo.id, "title": todo.title, "complete": todo.complete, "priority": todo.priority}), 201
 
 @app.route("/api/todos/<int:todo_id>", methods=["PUT"])
 def api_update_todo(todo_id):
@@ -180,6 +195,9 @@ def api_update_todo(todo_id):
             complete:
               type: boolean
               example: true
+            priority:
+              type: string
+              example: "low"
     responses:
       200:
         description: Updated todo item
@@ -194,6 +212,9 @@ def api_update_todo(todo_id):
             complete:
               type: boolean
               example: true
+            priority:
+              type: string
+              example: "low"
       400:
         description: Invalid input
       404:
@@ -205,13 +226,19 @@ def api_update_todo(todo_id):
     data = request.get_json()
     title = data.get("title")
     complete = data.get("complete")
+    priority = data.get("priority")  # Интеграция: получение приоритета для обновления
+    
     if title is None:
         return jsonify({"error": "Title is required"}), 400
+        
     todo.title = title
     if isinstance(complete, bool):
         todo.complete = complete
+    if priority:  # Интеграция: обновление приоритета
+        todo.priority = priority
+        
     db.session.commit()
-    return jsonify({"id": todo.id, "title": todo.title, "complete": todo.complete})
+    return jsonify({"id": todo.id, "title": todo.title, "complete": todo.complete, "priority": todo.priority})
 
 @app.route("/api/todos/<int:todo_id>", methods=["DELETE"])
 def api_delete_todo(todo_id):
